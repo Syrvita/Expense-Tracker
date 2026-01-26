@@ -1,0 +1,24 @@
+<?php
+// header.php
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense Tracker</title>
+
+  <link rel="stylesheet" href="/Expense-Tracker/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/Expense-Tracker/index.php">Home</a>
+      <a href="/Expense-Tracker/categories/index.php">Categories</a>
+      <a href="/Expense-Tracker/expenses/index.php">Expenses</a>
+      <a href="/Expense-Tracker/reports/summary.php">Reports</a>
+    </div>
+  </nav>
+
+  <main class="container">

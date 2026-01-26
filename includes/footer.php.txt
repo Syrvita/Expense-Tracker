@@ -1,0 +1,5 @@
+  </main>
+
+  <script src="/Expense-Tracker/js/main.js"></script>
+</body>
+</html>

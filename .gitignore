@@ -1,0 +1,9 @@
+# ignore OS stuff
+.DS_Store
+Thumbs.db
+
+# ignore local config if you make one later
+.env
+
+# ignore uploads if you add avatars later
+uploads/
