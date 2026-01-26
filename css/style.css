@@ -401,3 +401,130 @@ tbody tr:hover{
     overflow:auto;
   }
 }
+
+/* Login animation */
+.fade-in{
+  opacity: 0;
+  transform: translateY(8px);
+  animation: fadeInUp 420ms ease forwards;
+}
+
+@keyframes fadeInUp{
+  to{
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Page enter animation */
+.page-enter{
+  opacity: 0;
+  transform: translateY(12px);
+  animation: pageEnter 480ms cubic-bezier(.22,.61,.36,1) forwards;
+}
+
+@keyframes pageEnter{
+  to{
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* AUTH PAGE (no sidebar) */
+.auth-page{
+  min-height: 100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 28px 16px;
+}
+
+.auth-card{
+  width: 100%;
+  max-width: 520px;
+  background: rgba(20,19,18,0.65);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px 20px;
+  box-shadow: var(--shadow);
+}
+
+.auth-avatar{
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  margin: 0 auto 10px;
+  border: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(32,86,71,0.35), rgba(140,120,101,0.30));
+}
+
+.auth-title{
+  text-align:center;
+  margin: 0 0 4px;
+  font-size: 26px;
+}
+
+.auth-subtitle{
+  text-align:center;
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+
+.auth-anim{
+  opacity: 0;
+  transform: translateY(10px);
+  animation: authEnter 480ms cubic-bezier(.22,.61,.36,1) forwards;
+}
+
+@keyframes authEnter{
+  to{
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Same size Edit + Delete buttons */
+.actions{
+  align-items:center;
+}
+
+.actions .btn,
+.actions button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width: 96px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+/* Lower the Manage Budget button a bit AFTER EDITS ARE CRAAZYYY*/
+.manage-budget-btn{
+  margin-top: 12px;
+}
+
+/* Same size Edit + Delete buttons on Home list */
+.btn-mini{
+  padding: 9px 14px;
+  min-width: 74px;
+  text-align: center;
+}
+
+/* Card spacing fix (Home page) */
+.card{
+  padding: 20px;
+  border-radius: 18px;
+}
+
+/* Make spacing between stacked cards even */
+.card + .card{
+  margin-top: 20px;
+}
+
+/* Recent items a bit more breathing space brooooo wtf */
+.recent-item{
+  padding: 14px;
+}
+

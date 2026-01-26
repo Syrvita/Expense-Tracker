@@ -14,47 +14,54 @@ FROM categories c
 LEFT JOIN expenses e
   ON e.category_id = c.id
   AND e.user_id = ?
+WHERE c.user_id = ?
 GROUP BY c.id
 ORDER BY total_spent DESC, c.name ASC
 ";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $user_id);
+$stmt->bind_param("ii", $user_id, $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
 $grandTotal = 0;
 $rows = [];
+
 $labels = [];
 $values = [];
 
 if ($result && $result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $rows[] = $row;
+  while ($row = $result->fetch_assoc()) {
+    $rows[] = $row;
+    $grandTotal += (float)$row["total_spent"];
 
-        $labels[] = $row["category"];
-        $values[] = (float)$row["total_spent"];
-
-        $grandTotal += (float)$row["total_spent"];
-    }
+    $labels[] = $row["category"];
+    $values[] = (float)$row["total_spent"];
+  }
 }
 ?>
 
 <h1>Reports</h1>
 <p>Total spent per category.</p>
 
-<div class="card chart-wrap" style="margin: 14px 0;">
-  <h3 style="margin-top:0;">Spending by Category</h3>
+<!-- Chart ABOVE -->
+<div class="card chart-wrap" style="margin-bottom:16px;">
+  <h3 style="margin-top:0;">Spending Chart</h3>
 
-  <div class="chart-box">
-    <canvas
-      id="monthlyChart"
-      data-labels='<?= htmlspecialchars(json_encode($labels), ENT_QUOTES) ?>'
-      data-values='<?= htmlspecialchars(json_encode($values), ENT_QUOTES) ?>'
-    ></canvas>
-  </div>
+  <?php if (count($labels) === 0): ?>
+    <div class="notice-error">No expenses yet.</div>
+  <?php else: ?>
+    <div class="chart-box">
+      <canvas
+        id="reportChart"
+        data-labels='<?= htmlspecialchars(json_encode($labels), ENT_QUOTES) ?>'
+        data-values='<?= htmlspecialchars(json_encode($values), ENT_QUOTES) ?>'
+      ></canvas>
+    </div>
+  <?php endif; ?>
 </div>
 
+<!-- Table BELOW -->
 <table>
   <thead>
     <tr>
@@ -82,6 +89,42 @@ if ($result && $result->num_rows > 0) {
     <?php endif; ?>
   </tbody>
 </table>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const canvas = document.getElementById("reportChart");
+  if (!canvas) return;
+
+  const labels = JSON.parse(canvas.dataset.labels || "[]");
+  const vals = JSON.parse(canvas.dataset.values || "[]");
+
+  const ctx = canvas.getContext("2d");
+
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Total Spent",
+        data: vals,
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+});
+</script>
 
 <?php
 $stmt->close();

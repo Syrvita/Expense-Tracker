@@ -44,7 +44,8 @@
 
 5\. Open:
 
-&nbsp;  - `http://localhost/Expense-Tracker/`
+&nbsp;  - `http://localhost/
+`
 
 
 

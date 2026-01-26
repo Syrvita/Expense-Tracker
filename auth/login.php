@@ -1,64 +1,65 @@
 <?php
 require_once __DIR__ . "/../includes/db.php";
 require_once __DIR__ . "/../includes/auth.php";
-require_once __DIR__ . "/../includes/header.php";
 
 $error = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = trim($_POST["email"] ?? "");
-    $password = $_POST["password"] ?? "";
+    $password = trim($_POST["password"] ?? "");
 
     if ($email === "" || $password === "") {
         $error = "Email and password are required.";
     } else {
-        $stmt = $conn->prepare("SELECT id, name, email, password_hash, avatar FROM users WHERE email = ?");
+        $stmt = $conn->prepare("SELECT * FROM users WHERE email = ? LIMIT 1");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $res = $stmt->get_result();
         $user = $res->fetch_assoc();
         $stmt->close();
 
-        if (!$user || !password_verify($password, $user["password_hash"])) {
-            $error = "Invalid login.";
-        } else {
+        if ($user && password_verify($password, $user["password_hash"])) {
             $_SESSION["user"] = [
                 "id" => (int)$user["id"],
                 "name" => $user["name"],
                 "email" => $user["email"],
-                "avatar" => $user["avatar"]
+                "avatar" => $user["avatar"] ?? null
             ];
-
-            header("Location: /Expense-Tracker/index.php");
+            header("Location: /index.php");
             exit;
+        } else {
+            $error = "Invalid email or password.";
         }
     }
 }
+
+require_once __DIR__ . "/../includes/header_auth.php";
 ?>
 
-<h1>Login</h1>
-<p>Access your expenses and reports.</p>
+<div class="auth-avatar"></div>
+
+<h1 class="auth-title">Login</h1>
+<p class="auth-subtitle">Access your account.</p>
 
 <?php if ($error !== ""): ?>
   <div class="notice-error"><?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 
 <form method="POST" action="">
-  <div class="form-row" style="margin-bottom:12px;">
-    <div>
-      <label>Email *</label>
-      <input type="email" name="email" required>
-    </div>
-    <div>
-      <label>Password *</label>
-      <input type="password" name="password" required>
-    </div>
+  <div style="margin-bottom:12px;">
+    <label>Email *</label>
+    <input type="email" name="email" required>
   </div>
 
-  <div class="actions">
+  <div style="margin-bottom:12px;">
+    <label>Password *</label>
+    <input type="password" name="password" required>
+  </div>
+
+  <div class="actions" style="justify-content:center;">
     <button class="btn btn-primary" type="submit">Login</button>
-    <a class="btn" href="/Expense-Tracker/auth/register.php">Create Account</a>
+    <a class="btn" href="/auth/register.php">Register</a>
   </div>
 </form>
 
-<?php require_once __DIR__ . "/../includes/footer.php"; ?>
+<?php require_once __DIR__ . "/../includes/footer_auth.php"; ?>

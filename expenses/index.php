@@ -45,7 +45,8 @@ $result = $stmt->get_result();
 <p>Track your spending with category and date filters.</p>
 
 <div class="toolbar">
-  <a class="btn btn-primary" href="/Expense-Tracker/expenses/create.php">Add Expense</a>
+  <a class="btn btn-primary" href="/
+expenses/create.php">Add Expense</a>
 
   <form method="GET" action="" style="margin:0; padding:0; border:none; background:transparent; box-shadow:none;">
     <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
@@ -55,7 +56,8 @@ $result = $stmt->get_result();
       </div>
       <div class="actions">
         <button class="btn" type="submit">Apply</button>
-        <a class="btn" href="/Expense-Tracker/expenses/index.php">Reset</a>
+        <a class="btn" href="/
+expenses/index.php">Reset</a>
       </div>
     </div>
   </form>
@@ -84,9 +86,11 @@ $result = $stmt->get_result();
           <td><?= htmlspecialchars($row["notes"] ?? "") ?></td>
           <td>
             <div class="actions">
-              <a class="btn" href="/Expense-Tracker/expenses/edit.php?id=<?= (int)$row["id"] ?>">Edit</a>
+              <a class="btn" href="/
+expenses/edit.php?id=<?= (int)$row["id"] ?>">Edit</a>
 
-              <form action="/Expense-Tracker/expenses/delete.php" method="POST">
+              <form action="/
+expenses/delete.php" method="POST">
                 <input type="hidden" name="id" value="<?= (int)$row["id"] ?>">
                 <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this expense?')">Delete</button>
               </form>

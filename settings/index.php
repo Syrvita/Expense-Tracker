@@ -1,57 +1,63 @@
 <?php
+ob_start();
+
 require_once __DIR__ . "/../includes/db.php";
 require_once __DIR__ . "/../includes/auth.php";
 require_login();
 require_once __DIR__ . "/../includes/header.php";
 
-$userId = (int)$_SESSION["user"]["id"];
-$success = "";
+$user_id = (int)$_SESSION["user"]["id"];
+
 $error = "";
+$success = "";
 
-/* Handle avatar upload */
+/* Load current user info */
+$stmt = $conn->prepare("SELECT id, name, email FROM users WHERE id = ? LIMIT 1");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$res = $stmt->get_result();
+$userRow = $res->fetch_assoc();
+$stmt->close();
+
+if (!$userRow) {
+  echo "<div class='notice-error'>User not found.</div>";
+  require_once __DIR__ . "/../includes/footer.php";
+  exit;
+}
+
+/* Update name */
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    if (!isset($_FILES["avatar"]) || $_FILES["avatar"]["error"] !== UPLOAD_ERR_OK) {
-        $error = "Upload failed.";
+  $newName = trim($_POST["name"] ?? "");
+
+  if ($newName === "") {
+    $error = "Name cannot be empty.";
+  } elseif (strlen($newName) < 2) {
+    $error = "Name must be at least 2 characters.";
+  } elseif (strlen($newName) > 50) {
+    $error = "Name must be under 50 characters.";
+  } else {
+    $stmt = $conn->prepare("UPDATE users SET name = ? WHERE id = ?");
+    $stmt->bind_param("si", $newName, $user_id);
+
+    if ($stmt->execute()) {
+      $success = "Name updated.";
+
+      // update session too (so sidebar updates immediately)
+      $_SESSION["user"]["name"] = $newName;
+
+      // reload shown value
+      $userRow["name"] = $newName;
     } else {
-        $tmp = $_FILES["avatar"]["tmp_name"];
-        $size = (int)$_FILES["avatar"]["size"];
-
-        if ($size > 2 * 1024 * 1024) {
-            $error = "Max file size is 2MB.";
-        } else {
-            $ext = strtolower(pathinfo($_FILES["avatar"]["name"], PATHINFO_EXTENSION));
-            $allowed = ["jpg", "jpeg", "png", "webp"];
-
-            if (!in_array($ext, $allowed, true)) {
-                $error = "Only JPG, PNG, WEBP allowed.";
-            } else {
-                $newName = "u" . $userId . "_" . time() . "." . $ext;
-                $destDir = __DIR__ . "/../uploads/avatars/";
-                $destPath = $destDir . $newName;
-
-                if (!is_dir($destDir)) {
-                    mkdir($destDir, 0777, true);
-                }
-
-                if (move_uploaded_file($tmp, $destPath)) {
-                    $stmt = $conn->prepare("UPDATE users SET avatar = ? WHERE id = ?");
-                    $stmt->bind_param("si", $newName, $userId);
-                    $stmt->execute();
-                    $stmt->close();
-
-                    $_SESSION["user"]["avatar"] = $newName;
-                    $success = "Avatar updated.";
-                } else {
-                    $error = "Could not save file.";
-                }
-            }
-        }
+      $error = "Failed to update name.";
     }
+
+    $stmt->close();
+  }
 }
 ?>
 
 <h1>Settings</h1>
-<p>Profile settings.</p>
+<p>Update your account details.</p>
 
 <?php if ($success !== ""): ?>
   <div class="notice-ok"><?= htmlspecialchars($success) ?></div>
@@ -61,20 +67,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <div class="notice-error"><?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 
-<form method="POST" action="" enctype="multipart/form-data">
-  <div style="margin-bottom:12px;">
-    <label>Profile Name</label>
-    <input type="text" value="<?= htmlspecialchars($_SESSION["user"]["name"]) ?>" disabled>
-  </div>
+<div class="card">
+  <h3 style="margin-top:0;">Profile</h3>
 
-  <div style="margin-bottom:12px;">
-    <label>Upload Avatar</label>
-    <input type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp" required>
-  </div>
+  <form method="POST" action="" style="margin:0;">
+    <div style="margin-bottom:12px;">
+      <label>Name *</label>
+      <input type="text" name="name" value="<?= htmlspecialchars($userRow["name"]) ?>" required>
+    </div>
 
-  <div class="actions">
-    <button class="btn btn-primary" type="submit">Save</button>
-  </div>
-</form>
+    <div style="margin-bottom:12px;">
+      <label>Email</label>
+      <input type="email" value="<?= htmlspecialchars($userRow["email"]) ?>" disabled>
+    </div>
 
-<?php require_once __DIR__ . "/../includes/footer.php"; ?>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Save</button>
+    </div>
+  </form>
+</div>
+
+<?php
+require_once __DIR__ . "/../includes/footer.php";
+ob_end_flush();
+?>

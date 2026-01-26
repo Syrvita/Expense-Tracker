@@ -4,22 +4,19 @@ require_once __DIR__ . "/../includes/auth.php";
 require_login();
 require_once __DIR__ . "/../includes/header.php";
 
-$sql = "SELECT id, name, created_at FROM categories ORDER BY name ASC";
-$result = $conn->query($sql);
+$user_id = (int)$_SESSION["user"]["id"];
+
+$stmt = $conn->prepare("SELECT id, name, created_at FROM categories WHERE user_id = ? ORDER BY name ASC");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
 ?>
 
 <h1>Categories</h1>
 <p>Manage your expense categories.</p>
 
-<?php if (isset($_GET["error"]) && $_GET["error"] === "used"): ?>
-  <div class="notice-error">
-    Cannot delete: this category is being used by an expense.
-  </div>
-<?php endif; ?>
-
-
 <div class="toolbar">
-  <a class="btn btn-primary" href="/Expense-Tracker/categories/create.php">Add Category</a>
+  <a class="btn btn-primary" href="/categories/create.php">Add Category</a>
 </div>
 
 <table>
@@ -41,9 +38,9 @@ $result = $conn->query($sql);
           <td><?= htmlspecialchars($row["created_at"]) ?></td>
           <td>
             <div class="actions">
-              <a class="btn" href="/Expense-Tracker/categories/edit.php?id=<?= (int)$row["id"] ?>">Edit</a>
+              <a class="btn" href="/categories/edit.php?id=<?= (int)$row["id"] ?>">Edit</a>
 
-              <form action="/Expense-Tracker/categories/delete.php" method="POST" style="display:inline;">
+              <form action="/categories/delete.php" method="POST" style="display:inline;">
                 <input type="hidden" name="id" value="<?= (int)$row["id"] ?>">
                 <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this category?')">Delete</button>
               </form>
@@ -59,4 +56,7 @@ $result = $conn->query($sql);
   </tbody>
 </table>
 
-<?php require_once __DIR__ . "/../includes/footer.php"; ?>
+<?php
+$stmt->close();
+require_once __DIR__ . "/../includes/footer.php";
+?>

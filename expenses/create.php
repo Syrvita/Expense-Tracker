@@ -5,9 +5,13 @@ require_login();
 require_once __DIR__ . "/../includes/header.php";
 
 $error = "";
+$user_id = (int)$_SESSION["user"]["id"];
 
-/* Load categories for dropdown */
-$catResult = $conn->query("SELECT id, name FROM categories ORDER BY name ASC");
+/* Load categories (ONLY owned by user) */
+$stmt = $conn->prepare("SELECT id, name FROM categories WHERE user_id = ? ORDER BY name ASC");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$catResult = $stmt->get_result();
 
 $categories = [];
 if ($catResult && $catResult->num_rows > 0) {
@@ -15,6 +19,7 @@ if ($catResult && $catResult->num_rows > 0) {
         $categories[] = $c;
     }
 }
+$stmt->close();
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $title = trim($_POST["title"] ?? "");
@@ -23,13 +28,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $expense_date = trim($_POST["expense_date"] ?? "");
     $notes = trim($_POST["notes"] ?? "");
 
+    $today = date("Y-m-d");
+
     if ($title === "" || $category_id <= 0 || $amount === "" || $expense_date === "") {
         $error = "Please fill in all required fields.";
+    } elseif ($expense_date > $today) {
+        $error = "Future dates are not allowed.";
     } elseif (!is_numeric($amount) || (float)$amount <= 0) {
         $error = "Amount must be a number greater than 0.";
     } else {
-        $user_id = (int)$_SESSION["user"]["id"];
-
         $stmt = $conn->prepare("
             INSERT INTO expenses (user_id, category_id, title, amount, expense_date, notes)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -39,7 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmt->bind_param("iisdss", $user_id, $category_id, $title, $amt, $expense_date, $notes);
 
         if ($stmt->execute()) {
-            header("Location: /Expense-Tracker/expenses/index.php");
+            header("Location: /expenses/index.php");
             exit;
         } else {
             $error = "Failed to add expense.";
@@ -60,8 +67,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <?php if (count($categories) === 0): ?>
   <div class="notice-error">No categories found. Create a category first.</div>
   <div class="toolbar">
-    <a class="btn btn-primary" href="/Expense-Tracker/categories/create.php">Add Category</a>
-    <a class="btn" href="/Expense-Tracker/expenses/index.php">Back</a>
+    <a class="btn btn-primary" href="/categories/create.php">Add Category</a>
+    <a class="btn" href="/expenses/index.php">Back</a>
   </div>
 <?php else: ?>
 
@@ -93,7 +100,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     <div>
       <label>Date *</label>
-      <input type="date" name="expense_date" required>
+      <input type="date" name="expense_date" max="<?= date('Y-m-d') ?>" required>
     </div>
   </div>
 
@@ -104,7 +111,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
   <div class="actions">
     <button class="btn btn-primary" type="submit">Save</button>
-    <a class="btn" href="/Expense-Tracker/expenses/index.php">Cancel</a>
+    <a class="btn" href="/expenses/index.php">Cancel</a>
   </div>
 </form>
 

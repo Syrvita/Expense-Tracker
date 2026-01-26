@@ -1,15 +1,16 @@
 <?php
+// includes/auth.php
+
+// Start session early (before ANY output)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-function is_logged_in(): bool {
-    return isset($_SESSION["user"]);
-}
-
-function require_login(): void {
-    if (!is_logged_in()) {
-        header("Location: /Expense-Tracker/auth/login.php");
+// Call this on pages that require login
+function require_login(): void
+{
+    if (!isset($_SESSION["user"])) {
+        header("Location: /auth/login.php");
         exit;
     }
 }

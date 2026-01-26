@@ -1,7 +1,7 @@
       </main>
-    </div> <!-- .content -->
-  </div> <!-- .app-shell -->
+    </div>
+  </div>
 
-  <script src="/Expense-Tracker/js/main.js"></script>
+  <script src="/js/main.js"></script>
 </body>
 </html>

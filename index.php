@@ -6,9 +6,9 @@ require_once __DIR__ . "/includes/header.php";
 
 $user_id = (int)$_SESSION["user"]["id"];
 
-/* ----------------------------
-   Recent 5 expenses
----------------------------- */
+/* =========================
+   Recent 5 expenses (user only)
+========================= */
 $stmt = $conn->prepare("
   SELECT e.id, e.title, e.amount, e.expense_date, c.name AS category
   FROM expenses e
@@ -23,38 +23,38 @@ $recentRes = $stmt->get_result();
 $recent = $recentRes->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-/* ----------------------------
-   Monthly totals by category
----------------------------- */
+/* =========================
+   Monthly totals by category (user only)
+========================= */
 $startMonth = date("Y-m-01");
-$endMonth = date("Y-m-t");
+$endMonth   = date("Y-m-t");
 
-$sql = "
-SELECT c.name AS category, COALESCE(SUM(e.amount),0) AS total
-FROM categories c
-LEFT JOIN expenses e
-  ON e.category_id = c.id
-  AND e.user_id = ?
-  AND e.expense_date BETWEEN ? AND ?
-GROUP BY c.id
-ORDER BY total DESC
-";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("iss", $user_id, $startMonth, $endMonth);
+$stmt = $conn->prepare("
+  SELECT c.name AS category, COALESCE(SUM(e.amount),0) AS total
+  FROM categories c
+  LEFT JOIN expenses e
+    ON e.category_id = c.id
+    AND e.user_id = ?
+    AND e.expense_date BETWEEN ? AND ?
+  WHERE c.user_id = ?
+  GROUP BY c.id
+  ORDER BY total DESC, c.name ASC
+");
+$stmt->bind_param("issi", $user_id, $startMonth, $endMonth, $user_id);
 $stmt->execute();
 $res = $stmt->get_result();
 
 $labels = [];
 $values = [];
 while ($r = $res->fetch_assoc()) {
-    $labels[] = $r["category"];
-    $values[] = (float)$r["total"];
+  $labels[] = $r["category"];
+  $values[] = (float)$r["total"];
 }
 $stmt->close();
 
-/* ----------------------------
-   Budget summary for Home
----------------------------- */
+/* =========================
+   Budget (user only)
+========================= */
 $stmt = $conn->prepare("SELECT * FROM budgets WHERE user_id = ? AND is_active = 1 LIMIT 1");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -73,53 +73,52 @@ $budgetStatus = "No Budget";
 $progressClass = "progress-safe";
 
 if ($budget) {
-    $budgetAmount = (float)$budget["amount"];
-    $budgetPeriod = $budget["period"];
+  $budgetAmount = (float)$budget["amount"];
+  $budgetPeriod = $budget["period"] ?? "monthly";
 
-    // Date range based on budget period
-    if ($budgetPeriod === "daily") {
-        $budgetStart = date("Y-m-d");
-        $budgetEnd = date("Y-m-d");
-    } elseif ($budgetPeriod === "weekly") {
-        $budgetStart = date("Y-m-d", strtotime("monday this week"));
-        $budgetEnd = date("Y-m-d", strtotime("sunday this week"));
-    } else {
-        $budgetStart = date("Y-m-01");
-        $budgetEnd = date("Y-m-t");
-        $budgetPeriod = "monthly";
-    }
+  if ($budgetPeriod === "daily") {
+    $budgetStart = date("Y-m-d");
+    $budgetEnd = date("Y-m-d");
+  } elseif ($budgetPeriod === "weekly") {
+    $budgetStart = date("Y-m-d", strtotime("monday this week"));
+    $budgetEnd = date("Y-m-d", strtotime("sunday this week"));
+  } else {
+    $budgetPeriod = "monthly";
+    $budgetStart = date("Y-m-01");
+    $budgetEnd = date("Y-m-t");
+  }
 
-    // Total spent in the current budget period
-    $stmt = $conn->prepare("
-      SELECT COALESCE(SUM(amount), 0) AS total_spent
-      FROM expenses
-      WHERE user_id = ?
-        AND expense_date BETWEEN ? AND ?
-    ");
-    $stmt->bind_param("iss", $user_id, $budgetStart, $budgetEnd);
-    $stmt->execute();
-    $spentRes = $stmt->get_result();
-    $spentRow = $spentRes->fetch_assoc();
-    $budgetSpent = (float)$spentRow["total_spent"];
-    $stmt->close();
+  $stmt = $conn->prepare("
+    SELECT COALESCE(SUM(amount), 0) AS total_spent
+    FROM expenses
+    WHERE user_id = ?
+      AND expense_date BETWEEN ? AND ?
+  ");
+  $stmt->bind_param("iss", $user_id, $budgetStart, $budgetEnd);
+  $stmt->execute();
+  $spentRes = $stmt->get_result();
+  $spentRow = $spentRes->fetch_assoc();
+  $budgetSpent = (float)$spentRow["total_spent"];
+  $stmt->close();
 
-    $budgetRemaining = $budgetAmount - $budgetSpent;
+  $budgetRemaining = $budgetAmount - $budgetSpent;
 
-    if ($budgetAmount > 0) {
-        $budgetPercent = ($budgetSpent / $budgetAmount) * 100;
-        if ($budgetPercent > 999) $budgetPercent = 999;
-    }
+  if ($budgetAmount > 0) {
+    $budgetPercent = ($budgetSpent / $budgetAmount) * 100;
+    if ($budgetPercent > 100) $budgetPercent = 100;
+    if ($budgetPercent < 0) $budgetPercent = 0;
+  }
 
-    if ($budgetPercent < 70) {
-        $budgetStatus = "Safe";
-        $progressClass = "progress-safe";
-    } elseif ($budgetPercent < 90) {
-        $budgetStatus = "Warning";
-        $progressClass = "progress-warning";
-    } else {
-        $budgetStatus = "Exceeded";
-        $progressClass = "progress-danger";
-    }
+  if ($budgetPercent < 70) {
+    $budgetStatus = "Safe";
+    $progressClass = "progress-safe";
+  } elseif ($budgetPercent < 90) {
+    $budgetStatus = "Warning";
+    $progressClass = "progress-warning";
+  } else {
+    $budgetStatus = "Exceeded";
+    $progressClass = "progress-danger";
+  }
 }
 ?>
 
@@ -128,7 +127,7 @@ if ($budget) {
 
 <div style="display:grid; grid-template-columns: 1fr 420px; gap:20px; align-items:start;">
 
-  <!-- LEFT COLUMN -->
+  <!-- LEFT -->
   <div>
 
     <!-- Recent Expenses -->
@@ -141,7 +140,7 @@ if ($budget) {
         <?php else: ?>
           <?php foreach ($recent as $row): ?>
             <div class="recent-item">
-              <!-- Left info -->
+
               <div>
                 <div style="font-weight:700;"><?= htmlspecialchars($row["title"]) ?></div>
                 <div style="font-size:13px; color:var(--muted);">
@@ -149,35 +148,34 @@ if ($budget) {
                 </div>
               </div>
 
-              <!-- Right info -->
               <div style="display:flex; align-items:center; gap:14px;">
                 <div style="font-weight:700; min-width:110px; text-align:right;">
                   <?= number_format((float)$row["amount"], 2) ?>
                 </div>
 
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <a class="link-small" href="/Expense-Tracker/expenses/edit.php?id=<?= (int)$row["id"] ?>">Edit</a>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <a class="btn btn-mini" href="/expenses/edit.php?id=<?= (int)$row["id"] ?>">Edit</a>
 
-                  <form class="form-plain" method="POST" action="/Expense-Tracker/expenses/delete.php"
+                  <form class="form-plain" method="POST" action="/expenses/delete.php"
                         onsubmit="return confirm('Delete this expense?');">
                     <input type="hidden" name="id" value="<?= (int)$row["id"] ?>">
-                    <button class="btn btn-danger" type="submit">Delete</button>
+                    <button class="btn btn-danger btn-mini" type="submit">Delete</button>
                   </form>
                 </div>
               </div>
+
             </div>
           <?php endforeach; ?>
         <?php endif; ?>
       </div>
 
       <div style="margin-top:12px;">
-        <a class="btn" href="/Expense-Tracker/expenses/index.php">View all expenses</a>
+        <a class="btn" href="/expenses/index.php">View all expenses</a>
       </div>
     </div>
 
-    <div style="height:16px;"></div>
 
-    <!-- Budget Summary Card -->
+    <!-- Budget Card -->
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
         <h3 style="margin:0;">Current Budget</h3>
@@ -191,9 +189,9 @@ if ($budget) {
 
       <?php if (!$budget): ?>
         <p style="margin-top:10px;">No active budget set.</p>
-        <a class="btn btn-primary" href="/Expense-Tracker/budget/index.php">Set Budget</a>
-
+        <a class="btn btn-primary" href="/budget/index.php">Set Budget</a>
       <?php else: ?>
+
         <div style="margin-top:10px; color:var(--muted); font-size:13px;">
           <?= htmlspecialchars(strtoupper($budgetPeriod)) ?> • <?= htmlspecialchars($budgetStart) ?> → <?= htmlspecialchars($budgetEnd) ?>
         </div>
@@ -226,17 +224,17 @@ if ($budget) {
           </div>
         </div>
 
-        <div style="margin-top:12px;">
-          <a class="btn" href="/Expense-Tracker/budget/index.php">Manage Budget</a>
+        <div style="margin-top:16px;">
+          <a class="btn manage-budget-btn" href="/budget/index.php">Manage Budget</a>
         </div>
+
       <?php endif; ?>
     </div>
 
   </div>
 
-  <!-- RIGHT COLUMN -->
+  <!-- RIGHT -->
   <div>
-
     <div class="card chart-wrap">
       <h3 style="margin-top:0;">This Month — By Category</h3>
 
@@ -254,13 +252,13 @@ if ($budget) {
     <div class="card">
       <h4 style="margin-top:0;">Quick Actions</h4>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a class="btn btn-primary" href="/Expense-Tracker/expenses/create.php">Add Expense</a>
-        <a class="btn" href="/Expense-Tracker/categories/index.php">Manage Categories</a>
-        <a class="btn" href="/Expense-Tracker/reports/summary.php">View Reports</a>
+        <a class="btn btn-primary" href="/expenses/create.php">Add Expense</a>
+        <a class="btn" href="/categories/index.php">Manage Categories</a>
+        <a class="btn" href="/reports/summary.php">View Reports</a>
       </div>
     </div>
-
   </div>
+
 </div>
 
 <?php require_once __DIR__ . "/includes/footer.php"; ?>
